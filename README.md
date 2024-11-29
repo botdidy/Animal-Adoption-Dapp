@@ -1,6 +1,6 @@
 # Animal-Adoption-Dapp
 
-**A Simple Clarity Contract for Symbolic Animal Adoption**
+**This is a Simple Clarity Contract for Symbolic Animal Adoption**
 
 This Clarity contract enables users to symbolically adopt digital animals on the Stacks blockchain. 
 
