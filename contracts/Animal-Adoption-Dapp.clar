@@ -3,7 +3,11 @@
 (define-constant ERR_INVALID_ANIMAL u101)
 (define-constant ERR_NOT_ADOPTED u102)
 (define-constant ERR_UNAUTHORIZED u103)
+(define-constant ERR_INVALID_AGE u104)
+(define-constant ERR_INVALID_HEALTH_STATUS u105)
 (define-constant MAX_ADOPTION_LIMIT u3)
+(define-constant MAX_AGE u30)
+(define-constant MIN_AGE u0)
 
 ;; Data Maps
 (define-map adopted-animals principal (string-ascii 20))
@@ -19,6 +23,13 @@
     "Fish"
 ))
 
+;; List of valid health statuses
+(define-constant valid-health-statuses (list
+    "Healthy"
+    "Sick"
+    "Critical"
+))
+
 ;; Private Functions
 (define-private (check-animal (current-animal (string-ascii 20)) (state {animal: (string-ascii 20), found: bool}))
     (if (get found state)
@@ -27,9 +38,27 @@
     )
 )
 
+(define-private (check-health-status (status (string-ascii 10)) (state {current: (string-ascii 10), found: bool}))
+    (if (get found state)
+        state
+        {current: status, found: (is-eq status (get current state))}
+    )
+)
+
+(define-private (validate-age (age uint))
+    (and 
+        (>= age MIN_AGE)
+        (<= age MAX_AGE)
+    )
+)
+
 ;; Read-only Functions
 (define-read-only (is-valid-animal (animal (string-ascii 20)))
     (get found (fold check-animal allowed-animals {animal: animal, found: false}))
+)
+
+(define-read-only (is-valid-health-status (status (string-ascii 10)))
+    (get found (fold check-health-status valid-health-statuses {current: status, found: false}))
 )
 
 (define-read-only (get-adopted-animal (adopter principal))
@@ -56,9 +85,15 @@
         )
         (asserts! is-valid (err ERR_INVALID_ANIMAL))
         (asserts! (can-adopt tx-sender) (err ERR_ALREADY_ADOPTED))
-        (map-set adopted-animals tx-sender animal)
-        (map-set adoption-count tx-sender (+ current-count u1))
-        (ok true)
+        ;; Validate input before mapping
+        (match (map-get? adopted-animals tx-sender) 
+            prev-adoption (err ERR_ALREADY_ADOPTED)
+            (begin
+                (map-set adopted-animals tx-sender animal)
+                (map-set adoption-count tx-sender (+ current-count u1))
+                (ok true)
+            )
+        )
     )
 )
 
@@ -70,7 +105,15 @@
         )
         (asserts! is-valid (err ERR_INVALID_ANIMAL))
         (asserts! (is-some current-adoption) (err ERR_NOT_ADOPTED))
-        (ok (map-set adopted-animals tx-sender new-animal))
+        ;; Additional validation before changing
+        (match current-adoption
+            prev-animal 
+                (if (is-eq prev-animal new-animal)
+                    (err ERR_ALREADY_ADOPTED)
+                    (ok (map-set adopted-animals tx-sender new-animal))
+                )
+            (err ERR_NOT_ADOPTED)
+        )
     )
 )
 
@@ -81,8 +124,15 @@
             (current-count (get-adoption-count tx-sender))
         )
         (asserts! (is-some current-adoption) (err ERR_NOT_ADOPTED))
-        (map-delete adopted-animals tx-sender)
-        (map-set adoption-count tx-sender (- current-count u1))
-        (ok true)
+        ;; Additional validation before release
+        (match current-adoption
+            animal 
+                (begin
+                    (map-delete adopted-animals tx-sender)
+                    (map-set adoption-count tx-sender (- current-count u1))
+                    (ok true)
+                )
+            (err ERR_NOT_ADOPTED)
+        )
     )
 )
