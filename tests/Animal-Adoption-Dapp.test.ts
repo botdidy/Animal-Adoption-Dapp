@@ -1,17 +1,14 @@
 
-import { describe, expect, it } from "vitest";
-
-const accounts = simnet.getAccounts();
-const address1 = accounts.get("wallet_1")!;
+import * as vitest from "vitest";
 
 /*
   The test below is an example. To learn more, read the testing documentation here:
   https://docs.hiro.so/stacks/clarinet-js-sdk
 */
 
-describe("example tests", () => {
-  it("ensures simnet is well initalised", () => {
-    expect(simnet.blockHeight).toBeDefined();
+vitest.describe("example tests", () => {
+  vitest.it("ensures simnet is well initalised", () => {
+    vitest.expect(simnet.blockHeight).toBeDefined();
   });
 
   // it("shows an example", () => {
